@@ -1,0 +1,17 @@
+{
+  "name": "identdts",
+  "version": "1.0.0",
+  "description": "- https://www.rfc-editor.org/rfc/rfc1413 (ident proto)\r - https://www.rfc-editor.org/rfc/rfc1340 (for charset)",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@types/node": "^20.11.5",
+    "const": "^1.0.0",
+    "iconv-lite": "^0.6.3",
+    "net": "^1.0.2"
+  }
+}
