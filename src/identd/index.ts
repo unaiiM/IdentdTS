@@ -6,6 +6,7 @@ export interface Options {
     port? : number; // identd port 113 defualt
     lport : number; // local port from the machine
     rport : number; // remote port where the machine is connected
+    abort? : boolean; // Abort a connection if they receive 1000 characters without receiving an <EOL>.
 };
 
 // character set from RFC-1340
@@ -21,14 +22,20 @@ export default class Identd {
 
     // <EOL> ::= "015 012" (octal) ; CR-LF End of Line Indicator
     private readonly EOL : string = '\r\n';
-    private readonly READ_BUFFER_LENGTH : number = 512;
+    private readonly CR : number = 0o15; // \r
+    private readonly LF : number = 0o12; // \n
+    private readonly COLON : number = 0o72; // :
+    // Clients should feel free to abort a connection if they receive 1000 characters without receiving an <EOL>.
+    private readonly ABORT_CONNECTION_LENGTH = 1000;
+    private readonly READ_BUFFER_LENGTH : number = this.ABORT_CONNECTION_LENGTH;
     private readonly DEFAULT_CHARSET = 'US-ASCII';
 
     constructor(private options : Options){
+        options.port = options.port ?? 113;
+        options.abort = options.abort ?? true;
         if(!options.address) throw new Error('Undefined ip!');
-        if(!options.port) options.port = 113;
-        if(!options.lport) throw new Error('Undefined local prot!');
-        if(!options.rport) throw new Error('Undefined remote port!');
+        else if(!options.lport) throw new Error('Undefined local prot!');
+        else if(!options.rport) throw new Error('Undefined remote port!');
     };
 
     private digestResponse(response : string) : Response {
@@ -57,7 +64,7 @@ export default class Identd {
      */
     public async request(cb : (err? : Error, info? : Response) => void) : Promise<void> { // change this to static, pass the options here
         let response : Response = await new Promise((resolv, reject) => {
-            let data : string;
+            let data : Buffer = Buffer.from([]);
             const sock : net.Socket = net.createConnection({
                 host : this.options.address,
                 port : this.options.port,
@@ -65,7 +72,15 @@ export default class Identd {
                     buffer: Buffer.alloc(this.READ_BUFFER_LENGTH),
                     callback: (nread : number, arr : Uint8Array) => {
                         const buff : Buffer = Buffer.from(arr.slice(0, nread));
-                        console.log(iconv.decode(buff, this.DEFAULT_CHARSET));
+                        data = Buffer.concat([data, buff]);
+                        const index : number = this.isEOL(data);
+
+                        if(index !== -1){
+                            const res : Buffer = data.subarray(0, index);
+                            data = data.subarray(index + 2, data.length); // don't care about if the start is bigger than the end
+                            sock.end();
+                            this.handle(res);
+                        } else if(this.options.abort && data.length > this.ABORT_CONNECTION_LENGTH) sock.destroy(); // do somthing else 
                         return true;
                     },
                 },
@@ -78,21 +93,20 @@ export default class Identd {
             sock.on('error', (err : Error) => {
                 reject(err);
             });
-
-            sock.on('end', () => {
-                resolv(this.digestResponse(data));
-            });
         });
+    };
 
-        if(error){
-            cb(error, undefined);
-        }else if(response.status === 'ERROR'){
-            cb(new Error(response.error), undefined);
-        }else if(response.status === 'USERID'){
-            cb(undefined, response);
-        }else{  
-            cb(new Error('Bad response query!'), undefined);
-        };
+    /**
+     * Check if is there end of line in the buffer without converting it
+     * to string making it more faster; extra mem usage, etc.
+     */
+    private isEOL(buff : Buffer) : number {
+        const index : number = buff.indexOf(this.CR);
+        if(index !== -1 && buff.indexOf(this.LF) - 1 === index) return index;
+        else return -1;
+    };
+
+    private handle(buff : Buffer) : void {
 
     };
 
