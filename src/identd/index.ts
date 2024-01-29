@@ -40,6 +40,7 @@ export default class Identd {
     private static readonly MAX_TOKEN_LENGTH : number = 64;
     private static readonly DEFAULT_CHARSET : string = 'US-ASCII';
 
+    public static readonly UNDEFINED_LOCAL_ADDRESS : string = 'Undefined address!';
     public static readonly UNDEFINED_SERVER_PORT : string = 'Undefined server prot!';
     public static readonly UNDEFINED_LOCAL_PORT : string = 'Undefined local port!';
     public static readonly INVALID_RESPONSE_LENGTH : string = 'Invalid response length!';
@@ -50,7 +51,7 @@ export default class Identd {
     public static readonly INVALID_ERROR_TOKEN : string = 'Invalid error token length!';
 
     private static checkOptions(options : Options){
-        if(!options.address) throw new Error('Undefined ip!');
+        if(!options.address) throw new Error(this.UNDEFINED_LOCAL_ADDRESS);
         else if(!options.server_port) throw new Error(this.UNDEFINED_SERVER_PORT);
         else if(!options.client_port) throw new Error(this.UNDEFINED_LOCAL_PORT);
 
