@@ -1,4 +1,4 @@
-import Identd, { Response } from "../identd";
+import Identd, { Response } from "identd";
 
 Identd.request({
     address: '172.26.41.85',

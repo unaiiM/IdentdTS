@@ -1,7 +1,9 @@
-# Ident Protocol
+# Introduction
 Ident Protocol is an Internet protocol that helps identify the user of a particular TCP connection.
 
 One popular daemon program for providing the ident service is identd.
+
+This is a client based ident protocol library, where you can request an identity to an ident server.
 # Request Options
 * ```address``` --> the identd server ip address
 * ```port``` --> identd server port, if is undefined 113 is used by defualt
@@ -27,7 +29,7 @@ One popular daemon program for providing the ident service is identd.
 * ```INVALID_ERROR_TOKEN``` --> invalid error token length
 # Example
 ```
-import Identd, { Response } from "../identd";
+import Identd, { Response } from "identd";
 
 Identd.request({
     address: '172.26.41.85',
