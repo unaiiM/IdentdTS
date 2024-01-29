@@ -1,6 +1,6 @@
 {
   "name": "identd",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "This is a client based ident protocol library, where you can request an identity to an ident server.",
   "main": "dist/identd/index.js",
   "author": "unaiiM",
@@ -10,5 +10,9 @@
     "iconv-lite": "^0.6.3",
     "identd": "^1.0.0",
     "net": "^1.0.2"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/unaiiM/identd"
   }
 }
