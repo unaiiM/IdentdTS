@@ -1,10 +1,8 @@
 import * as net from 'net';
 import * as iconv from 'iconv-lite';
-import charsets from './lib/charset.js';
-import opsys_list from './lib/opsys.js';
-import errors from './lib/errors.js';
+import { CHARSETS, OPSYS, ERROR_TOKENS } from './common/constants.js';
 
-export interface Options {
+interface Options {
     address : string;
     port? : number; // identd port 113 defualt
     server_port : number; // local port from the machine
@@ -15,7 +13,7 @@ export interface Options {
 // character set from RFC-1340
 // 6193, 23 : USERID : UNIX : stjohns
 // 6195, 23 : ERROR : NO-USER
-export interface Response {
+interface Response {
     server_port : number; // x, y
     client_port : number;
     status : string; // ERROR / USERID
@@ -25,35 +23,37 @@ export interface Response {
     charset? : string; // for userid
 }
 
-export default class Identd {
+const Errors : Record<string, string> = {
+    UNDEFINED_LOCAL_ADDRESS: 'Undefined address!',
+    UNDEFINED_SERVER_PORT: 'Undefined server prot!',
+    UNDEFINED_LOCAL_PORT: 'Undefined local port!',
+    INVALID_RESPONSE_LENGTH: 'Invalid response length!',
+    INVALID_STATUS_RESPONSE: 'Invalid status response!',
+    INVALID_OPSYS_RESPONSE: 'Invalid opsys response!',
+    INVALID_CHARSET_RESPONSE: 'Invalid charset response!',
+    INVALID_USERID_LENGTH: 'Invalid userid length!',
+    INVALID_ERROR_TOKEN: 'Invalid error token length!',
+}
 
-    // <EOL> ::= "015 012" (octal) ; CR-LF End of Line Indicator
-    private static readonly EOL : string = '\r\n';
-    private static readonly CR : number = 0o15; // \r
-    private static readonly LF : number = 0o12; // \n
-    private static readonly COLON : number = 0o72; // :
+// <EOL> ::= "015 012" (octal) ; CR-LF End of Line Indicator
+const EOL : string = '\r\n';
+const CR : number = 0o15; // \r
+const LF : number = 0o12; // \n
+const COLON : number = 0o72; // :
 
-    // Clients should feel free to abort a connection if they receive 1000 characters without receiving an <EOL>.
-    private static readonly ABORT_CONNECTION_LENGTH = 1000;
-    private static readonly READ_BUFFER_LENGTH : number = 256;
-    private static readonly MAX_USERID_LENGTH : number = 512;
-    private static readonly MAX_TOKEN_LENGTH : number = 64;
-    private static readonly DEFAULT_CHARSET : string = 'US-ASCII';
+// Clients should feel free to abort a connection if they receive 1000 characters without receiving an <EOL>.
+const ABORT_CONNECTION_LENGTH = 1000;
+const READ_BUFFER_LENGTH : number = 256;
+const MAX_USERID_LENGTH : number = 512;
+const MAX_TOKEN_LENGTH : number = 64;
+const DEFAULT_CHARSET : string = 'US-ASCII';
 
-    public static readonly UNDEFINED_LOCAL_ADDRESS : string = 'Undefined address!';
-    public static readonly UNDEFINED_SERVER_PORT : string = 'Undefined server prot!';
-    public static readonly UNDEFINED_LOCAL_PORT : string = 'Undefined local port!';
-    public static readonly INVALID_RESPONSE_LENGTH : string = 'Invalid response length!';
-    public static readonly INVALID_STATUS_RESPONSE : string = 'Invalid status response!';
-    public static readonly INVALID_OPSYS_RESPONSE : string = 'Invalid opsys response!';
-    public static readonly INVALID_CHARSET_RESPONSE : string = 'Invalid charset response!';
-    public static readonly INVALID_USERID_LENGTH : string = 'Invalid userid length!';
-    public static readonly INVALID_ERROR_TOKEN : string = 'Invalid error token length!';
+class Identd {
 
     private static checkOptions(options : Options){
-        if(!options.address) throw new Error(this.UNDEFINED_LOCAL_ADDRESS);
-        else if(!options.server_port) throw new Error(this.UNDEFINED_SERVER_PORT);
-        else if(!options.client_port) throw new Error(this.UNDEFINED_LOCAL_PORT);
+        if(!options.address) throw new Error(Errors.UNDEFINED_LOCAL_ADDRESS);
+        else if(!options.server_port) throw new Error(Errors.UNDEFINED_SERVER_PORT);
+        else if(!options.client_port) throw new Error(Errors.UNDEFINED_LOCAL_PORT);
 
         options.port = options.port ?? 113;
         options.abort = options.abort ?? true;
@@ -75,7 +75,7 @@ export default class Identd {
                 host : options.address,
                 port : options.port,
                 onread: {
-                    buffer: Buffer.alloc(this.READ_BUFFER_LENGTH),
+                    buffer: Buffer.alloc(READ_BUFFER_LENGTH),
                     callback: (nread : number, arr : Uint8Array) => {
                         const buff : Buffer = Buffer.from(arr.slice(0, nread));
                         data = Buffer.concat([data, buff]);
@@ -91,9 +91,9 @@ export default class Identd {
                             } catch(err){
                                 reject(err);
                             };
-                        } else if(options.abort && data.length > this.ABORT_CONNECTION_LENGTH){
+                        } else if(options.abort && data.length > ABORT_CONNECTION_LENGTH){
                             sock.destroy();
-                            throw new Error(this.INVALID_RESPONSE_LENGTH);
+                            throw new Error(Errors.INVALID_RESPONSE_LENGTH);
                         };
 
                         return true;
@@ -116,8 +116,8 @@ export default class Identd {
      * to string making it more faster; extra mem usage, etc.
      */
     private static isEOL(buff : Buffer) : number {
-        const index : number = buff.indexOf(this.CR);
-        if(index !== -1 && buff.indexOf(this.LF) - 1 === index) return index;
+        const index : number = buff.indexOf(CR);
+        if(index !== -1 && buff.indexOf(LF) - 1 === index) return index;
         else return -1;
     };
 
@@ -158,7 +158,7 @@ export default class Identd {
     private static parseResponse(buff : Buffer) : Response {
         // port pair
         let response : Partial<Response> = {};
-        let arr : Buffer[] = this.splitBuffer(buff, this.COLON);
+        let arr : Buffer[] = this.splitBuffer(buff, COLON);
 
         let str : string = this.defaultDecode(arr[0]);
         let foo : string[] = str.split(',');
@@ -173,25 +173,25 @@ export default class Identd {
             foo = str.split(',');
             response.opsys = foo[0].trim();
 
-            if(!this.isValidOS(response.opsys)) throw new Error(this.INVALID_OPSYS_RESPONSE);
+            if(!this.isValidOS(response.opsys)) throw new Error(Errors.INVALID_OPSYS_RESPONSE);
             else if(foo[1]){
                 response.charset = foo[1].trim();
-                if(!this.isValidCharset(response.opsys)) throw new Error(this.INVALID_CHARSET_RESPONSE);
+                if(!this.isValidCharset(response.opsys)) throw new Error(Errors.INVALID_CHARSET_RESPONSE);
                 response.userid = arr[3];
             }else {
                 response.userid = this.defaultDecode(arr[3]);
-                if(!this.isValidUserID(response.userid)) throw new Error(this.INVALID_USERID_LENGTH);
+                if(!this.isValidUserID(response.userid)) throw new Error(Errors.INVALID_USERID_LENGTH);
             };
         }else if(response.status === 'ERROR'){
             response.error = str;
-            if(!this.isValidErrorToken(response.error)) throw new Error(this.INVALID_ERROR_TOKEN);
-        }else throw new Error(this.INVALID_STATUS_RESPONSE);
+            if(!this.isValidErrorToken(response.error)) throw new Error(Errors.INVALID_ERROR_TOKEN);
+        }else throw new Error(Errors.INVALID_STATUS_RESPONSE);
 
         return <Response> response;
     };
 
     private static defaultDecode(buff : Buffer) : string {
-        return iconv.decode(buff, this.DEFAULT_CHARSET)
+        return iconv.decode(buff, DEFAULT_CHARSET)
     };
 
     private static splitBuffer(buff : Buffer, char : number) : Buffer[] {
@@ -213,19 +213,19 @@ export default class Identd {
      * TCP port (decimal) on the source (client) system.
      */
     private static buildRequest(server_port : number, client_port : number) : string {
-        return `${server_port}, ${client_port}${this.EOL}`;
+        return `${server_port}, ${client_port}${EOL}`;
     };
 
-    private static isValidOS(opsys : string) : boolean {
-        return opsys === 'OTHER' || opsys_list.indexOf(opsys) !== -1;
+    private static isValidOS(os : string) : boolean {
+        return os === 'OTHER' || OPSYS.indexOf(os) !== -1;
     };
 
     private static isValidCharset(charset : string) : boolean {
-        return charsets.indexOf(charset) !== -1;
+        return CHARSETS.indexOf(charset) !== -1;
     };
     
     private static isValidUserID(userid : string) : boolean {
-        return userid.length > 0 && userid.length <= this.MAX_USERID_LENGTH;
+        return userid.length > 0 && userid.length <= MAX_USERID_LENGTH;
     };
 
     /*private static isValidToken(token : string) : boolean {
@@ -234,8 +234,13 @@ export default class Identd {
 
     private static isValidErrorToken(error_token : string) : boolean {
         return error_token.length > 1 
-            && error_token.length <= this.MAX_TOKEN_LENGTH 
-            && (errors.indexOf(error_token) !== -1 || error_token[0] === 'X');
+            && error_token.length <= MAX_TOKEN_LENGTH 
+            && (ERROR_TOKENS.indexOf(error_token) !== -1 || error_token[0] === 'X');
     };
 
+};
+
+export default Identd;
+export {
+    Errors
 };

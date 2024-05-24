@@ -1,4 +1,4 @@
-export default [
+const CHARSETS : string[] = [
     "ISO_646.basic:1983",
     "INVARIANT",
     "ISO_646.irv:1983",
@@ -145,3 +145,5 @@ export default [
     "EBCDIC-UK",
     "EBCDIC-US"
 ];
+
+export default CHARSETS;

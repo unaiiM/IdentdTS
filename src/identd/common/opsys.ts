@@ -1,4 +1,4 @@
-export default [
+const OPSYS : string[] = [
     "AEGIS",
     "APOLLO",
     "AIX/370",
@@ -107,3 +107,5 @@ export default [
     "XDE",
     "XENIX"
 ];
+
+export default OPSYS;
