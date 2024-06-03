@@ -23,7 +23,7 @@ interface Response {
     charset? : string; // for userid
 }
 
-const Errors : Record<string, string> = {
+const Errors = {
     UNDEFINED_LOCAL_ADDRESS: 'Undefined address!',
     UNDEFINED_SERVER_PORT: 'Undefined server prot!',
     UNDEFINED_LOCAL_PORT: 'Undefined local port!',
@@ -54,7 +54,7 @@ class Identd {
         if(!options.address) throw new Error(Errors.UNDEFINED_LOCAL_ADDRESS);
         else if(!options.server_port) throw new Error(Errors.UNDEFINED_SERVER_PORT);
         else if(!options.client_port) throw new Error(Errors.UNDEFINED_LOCAL_PORT);
-
+        
         options.port = options.port ?? 113;
         options.abort = options.abort ?? true;
     };

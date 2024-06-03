@@ -2,8 +2,8 @@
   "name": "identd",
   "version": "1.0.2",
   "description": "This is a client based ident protocol library, where you can request an identity to an ident server.",
-  "main": "dist/identd/index.js",
-  "types": "src/identd/index.ts",
+  "main": "dist/index.js",
+  "typings": "typings/index.d.ts",
   "author": "unaiiM",
   "license": "ISC",
   "dependencies": {
